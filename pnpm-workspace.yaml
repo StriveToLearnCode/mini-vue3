@@ -1,0 +1,3 @@
+# yaml 配置文件格式
+packages:
+  - "packages/*"
