@@ -7,7 +7,7 @@ function cleanupEffect(effect) {
   }
 }
 
-class ReactiveEffect {
+export class ReactiveEffect {
   // public 表示在实例上新增了active属性
   public active = true; //默认激活
   public parent = null;
@@ -63,18 +63,25 @@ export function track(target, type, key) {
   if (!dep) {
     depsMap.set(key, (dep = new Set()));
   }
-  // 如果没有再收集,去重
-  let shouldTrack = !dep.has(activeEffect);
+  trackEffects(dep);
+  // 单向指的是  属性记录了effect，方向记录，应该让effect也记录他被哪些属性收集过，这样的做的好处为了可以清理
+  // 对象  某个属性  -> 多个effect
+  // WeakMap = {对象:{属性:effect}}
+  // {对象：{name：[]}}
+}
 
-  if (shouldTrack) {
-    dep.add(activeEffect);
-    activeEffect.deps.push(dep);
+export function trackEffects(dep) {
+  // 如果没有再收集,去重
+  if (activeEffect) {
+    let shouldTrack = !dep.has(activeEffect);
+
+    if (shouldTrack) {
+      dep.add(activeEffect);
+      activeEffect.deps.push(dep);
+    }
   }
 }
-// 单向指的是  属性记录了effect，方向记录，应该让effect也记录他被哪些属性收集过，这样的做的好处为了可以清理
-// 对象  某个属性  -> 多个effect
-// WeakMap = {对象:{属性:effect}}
-// {对象：{name：[]}}
+
 export function trigger(target, type, key, value, oldValue) {
   const depsMap = targetMap.get(target);
   if (!depsMap) return; //触发的值没有在模板中使用，不需要更新
@@ -82,19 +89,21 @@ export function trigger(target, type, key, value, oldValue) {
 
   // 永远在执行之前 先拷贝一份来执行，不要关联引用
   if (effects) {
-    effects = new Set(effects);
-    effects.forEach((effect) => {
-      if (effect !== activeEffect) {
-        if (effect.scheduler) {
-          effect.scheduler(); //如果用户传入了调度函数，就用用户的
-        } else {
-          effect.run(); //否则默认刷新视图
-        }
-      }
-    });
+    triggerEffects(effects);
   }
 }
-
+export function triggerEffects(effects) {
+  effects = new Set(effects);
+  effects.forEach((effect) => {
+    if (effect !== activeEffect) {
+      if (effect.scheduler) {
+        effect.scheduler(); //如果用户传入了调度函数，就用用户的
+      } else {
+        effect.run(); //否则默认刷新视图
+      }
+    }
+  });
+}
 // 依赖收集
 // 1.我们先搞了一个响应式对象  new Proxy
 // 2.effect 渲染模板   默认数据变化，触发更新

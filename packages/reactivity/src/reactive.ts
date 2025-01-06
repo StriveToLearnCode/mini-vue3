@@ -1,7 +1,15 @@
 import { isObject } from "@vue/shared/";
 import { track, trigger } from "./effect";
+// 将数据转化成响应式的数据，只能做对象的代理
+const reactiveMap = new WeakMap(); //key只能是对象
 
-const reactiveMap = new WeakMap();
+// 1、实现同一个对象  代理多次，返回同一个代理
+// 2、代理对象被再次代理  可以直接返回
+
+export function isReactive(value) {
+  return !!(value && value[ReactiveFlags.IS_REACTIVE]);
+}
+
 const enum ReactiveFlags {
   IS_REACTIVE = "_v_isReactive", //标记是否之前已经new Proxy过
 }
